@@ -1,0 +1,131 @@
+:root {
+  --bg: #f6f4ef;
+  --card: #fffaf2;
+  --ink: #17130e;
+  --muted: #625746;
+  --accent: #d1462f;
+  --border: #e9dfcf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 20% 0%, #f9e9ca 0, var(--bg) 45%, #efe7d9 100%);
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 2.8rem;
+  letter-spacing: -0.04em;
+}
+
+.header p {
+  margin-top: 0.4rem;
+  color: var(--muted);
+}
+
+.controls {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 1.4rem 0;
+}
+
+.controls input {
+  width: 260px;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  padding: 0.65rem 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.message {
+  color: var(--muted);
+  min-height: 1.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.run-list,
+.shot-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.run-list {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.shot-grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 10px 30px rgba(28, 18, 9, 0.06);
+}
+
+.card h3 {
+  margin: 0 0 0.4rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.badge {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  margin-right: 0.3rem;
+  color: var(--muted);
+}
+
+.shot-grid img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: white;
+}
+
+a {
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .controls input {
+    width: 100%;
+  }
+}

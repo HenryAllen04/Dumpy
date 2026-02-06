@@ -1,0 +1,33 @@
+version: 1
+project:
+  repo: "OWNER/REPO"
+  defaultBranch: "main"
+
+capture:
+  devices:
+    - name: desktop
+      width: 1440
+      height: 900
+    - name: mobile
+      width: 390
+      height: 844
+  fullPage: true
+  timeoutMs: 30000
+  waitUntil: networkidle
+  disableAnimations: true
+
+routes:
+  include:
+    - "/"
+  exclude:
+    - "/api/*"
+    - "/auth/callback*"
+
+discovery:
+  sitemap:
+    enabled: true
+    path: "/sitemap.xml"
+  maxRoutes: 200
+
+output:
+  publicBaseUrl: "https://assets.dumpy.ai"

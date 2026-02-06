@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dumpy Timeline</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <h1>Dumpy</h1>
+        <p>UI timeline history from deployment previews</p>
+      </header>
+
+      <section class="controls" id="repo-controls">
+        <label for="repo-input">Repository</label>
+        <input id="repo-input" placeholder="owner/repo" />
+        <button id="load-repo">Load timeline</button>
+      </section>
+
+      <section id="message" class="message"></section>
+      <section id="content"></section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

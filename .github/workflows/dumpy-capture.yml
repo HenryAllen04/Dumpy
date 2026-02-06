@@ -1,0 +1,131 @@
+name: Dumpy Capture
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  capture-and-publish:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.target_url != ''
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Resolve run metadata
+        id: meta
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            const deployment = context.payload.deployment || {};
+            const deploymentStatus = context.payload.deployment_status || {};
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const sha = deployment.sha || context.sha;
+            const ref = deployment.ref || context.ref;
+            const environment = String(deployment.environment || "").toLowerCase();
+            const eventType = environment === "production" ? "production" : "preview";
+
+            let prNumber = "";
+
+            const payload = deployment.payload;
+            if (payload && typeof payload === "object") {
+              const pr = payload.pull_request;
+              if (pr && typeof pr === "object" && pr.number) {
+                prNumber = String(pr.number);
+              }
+            }
+
+            if (!prNumber && sha) {
+              try {
+                const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: sha
+                });
+                if (prs.data.length > 0) {
+                  prNumber = String(prs.data[0].number);
+                }
+              } catch (error) {
+                core.warning(`Unable to resolve PR for commit ${sha}: ${error}`);
+              }
+            }
+
+            core.setOutput("repo", repo);
+            core.setOutput("sha", sha);
+            core.setOutput("ref", ref);
+            core.setOutput("event_type", eventType);
+            core.setOutput("pr_number", prNumber);
+            core.setOutput("base_url", deploymentStatus.target_url || "");
+
+      - name: Capture screenshots
+        run: |
+          npm run --silent dev -- capture \
+            --base-url "${{ steps.meta.outputs.base_url }}" \
+            --sha "${{ steps.meta.outputs.sha }}" \
+            --ref "${{ steps.meta.outputs.ref }}" \
+            --event "${{ steps.meta.outputs.event_type }}" \
+            --pr "${{ steps.meta.outputs.pr_number }}" \
+            --config .dumpy.yml \
+            --out output/run
+
+      - name: Publish to Cloudflare R2
+        id: publish
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          npm run --silent dev -- publish \
+            --input output/run \
+            --bucket "$R2_BUCKET" \
+            --account-id "$R2_ACCOUNT_ID" \
+            --access-key-id "$R2_ACCESS_KEY_ID" \
+            --secret-access-key "$R2_SECRET_ACCESS_KEY" \
+            --public-base-url "$R2_PUBLIC_BASE_URL" \
+            --history-base-url "${{ vars.HISTORY_APP_BASE_URL || 'https://history.dumpy.ai' }}" \
+            > output/publish.json
+
+          MANIFEST_URL=$(node -e 'const fs=require("fs");const data=JSON.parse(fs.readFileSync("output/publish.json","utf8"));process.stdout.write(data.manifestUrl)')
+          TIMELINE_URL=$(node -e 'const fs=require("fs");const data=JSON.parse(fs.readFileSync("output/publish.json","utf8"));process.stdout.write(data.timelineUrl)')
+
+          echo "manifest_url=$MANIFEST_URL" >> "$GITHUB_OUTPUT"
+          echo "timeline_url=$TIMELINE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on pull request
+        if: steps.meta.outputs.pr_number != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run --silent dev -- comment-pr \
+            --repo "${{ steps.meta.outputs.repo }}" \
+            --sha "${{ steps.meta.outputs.sha }}" \
+            --pr "${{ steps.meta.outputs.pr_number }}" \
+            --run-url "${{ steps.publish.outputs.manifest_url }}" \
+            --timeline-url "${{ steps.publish.outputs.timeline_url }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dumpy-run-${{ steps.meta.outputs.sha }}
+          path: output/run
+          retention-days: 7
