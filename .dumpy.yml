@@ -1,6 +1,6 @@
 version: 1
 project:
-  repo: "OWNER/REPO"
+  repo: "HenryAllen04/Dumpy"
   defaultBranch: "main"
 
 capture:

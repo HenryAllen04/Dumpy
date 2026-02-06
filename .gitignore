@@ -3,4 +3,5 @@ dist/
 output/
 coverage/
 .env
+.secrets/
 .DS_Store
