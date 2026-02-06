@@ -2,6 +2,11 @@
 
 Dumpy captures deployment screenshots and builds a long-term UI timeline for your repo.
 
+## Repositories
+
+- Public: [HenryAllen04/Dumpy](https://github.com/HenryAllen04/Dumpy)
+- Private product: [HenryAllen04/Dumpy-Private](https://github.com/HenryAllen04/Dumpy-Private)
+
 ## What it does
 
 - Captures route screenshots from successful deployment URLs.
@@ -27,6 +32,7 @@ Dumpy captures deployment screenshots and builds a long-term UI timeline for you
 - `/Users/henrym5/Dumpy/src/publish.ts`: R2 upload + index merge.
 - `/Users/henrym5/Dumpy/src/comment-pr.ts`: PR comment upsert.
 - `/Users/henrym5/Dumpy/.github/workflows/dumpy-capture.yml`: CI workflow.
+- `/Users/henrym5/Dumpy/.github/workflows/deploy-landing.yml`: landing page deploy workflow.
 - `/Users/henrym5/Dumpy/web/`: timeline frontend.
 
 ## Quick start
@@ -76,6 +82,16 @@ npm run dev -- publish \
 Optional GitHub repository variable:
 
 - `HISTORY_APP_BASE_URL` (default: `https://history.dumpy.ai`)
+
+Required secrets for landing deploy workflow:
+
+- `CLOUDFLARE_API_TOKEN` (Pages edit/deploy permissions)
+- `CLOUDFLARE_ACCOUNT_ID`
+
+Optional repository variables for landing deploy workflow:
+
+- `CF_PAGES_PROJECT` (default: `dumpy`)
+- `CF_PAGES_BRANCH` (default: `main`)
 
 ## Config (`.dumpy.yml`)
 

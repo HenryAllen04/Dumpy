@@ -5,6 +5,7 @@ const loadButton = document.getElementById("load-repo");
 
 const query = new URLSearchParams(window.location.search);
 const configuredAssetsBase = query.get("assets") || "https://assets.dumpy.ai";
+const defaultRepo = "HenryAllen04/Dumpy";
 
 function setMessage(text) {
   messageEl.textContent = text;
@@ -49,6 +50,27 @@ async function loadManifest(repo, sha) {
     throw new Error(`Could not load run manifest (${response.status})`);
   }
   return response.json();
+}
+
+function renderWelcome() {
+  const featuredHref = `/${defaultRepo}?assets=${encodeURIComponent(configuredAssetsBase)}`;
+  contentEl.innerHTML = `
+    <section class="run-list">
+      <article class="card">
+        <h3>Start with your repo</h3>
+        <p class="meta">Enter your <code>owner/repo</code> above and load your timeline history.</p>
+      </article>
+      <article class="card">
+        <h3>Assets bucket</h3>
+        <p class="meta">Current source: <code>${configuredAssetsBase}</code></p>
+      </article>
+      <article class="card">
+        <h3>Example path</h3>
+        <p class="meta">If seeded, open <code>${defaultRepo}</code> directly.</p>
+        <a href="${featuredHref}">Open example route</a>
+      </article>
+    </section>
+  `;
 }
 
 function renderIndex(repo, index) {
@@ -101,7 +123,7 @@ function renderRun(repo, manifest) {
 
 async function boot() {
   const parsed = parsePathname(window.location.pathname);
-  repoInput.value = parsed.repo;
+  repoInput.value = parsed.repo || defaultRepo;
 
   loadButton.addEventListener("click", () => {
     const value = repoInput.value.trim();
@@ -113,7 +135,8 @@ async function boot() {
   });
 
   if (!parsed.repo) {
-    setMessage("Enter a repository to load timeline history.");
+    setMessage("Ready. Add a repo and load timeline data.");
+    renderWelcome();
     return;
   }
 

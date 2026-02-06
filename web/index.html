@@ -3,24 +3,52 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dumpy Timeline</title>
+    <title>Dumpy</title>
+    <meta
+      name="description"
+      content="Dumpy captures UI screenshots from deployments and builds a timeline of your product evolution."
+    />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main class="app">
-      <header class="header">
-        <h1>Dumpy</h1>
-        <p>UI timeline history from deployment previews</p>
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">UI history for fast-moving teams</p>
+          <h1>Dumpy tracks how your UI evolves on every deploy.</h1>
+          <p class="subhead">
+            Connect a repo, capture preview deployments, and browse screenshot history by PR, route,
+            device, and commit.
+          </p>
+          <div class="hero-actions">
+            <a class="btn" href="https://github.com/HenryAllen04/Dumpy" target="_blank" rel="noreferrer noopener">Open Source Repo</a>
+            <a class="btn btn-secondary" href="https://github.com/HenryAllen04/Dumpy-Private" target="_blank" rel="noreferrer noopener">Private Product Repo</a>
+            <a class="link" href="#explorer">Try Timeline Explorer</a>
+          </div>
+        </div>
+        <div class="hero-card">
+          <h2>MVP status</h2>
+          <ul>
+            <li>GitHub Action capture pipeline</li>
+            <li>Playwright screenshot capture</li>
+            <li>Cloudflare R2 manifest storage</li>
+            <li>Cloudflare Pages timeline UI</li>
+          </ul>
+        </div>
       </header>
 
-      <section class="controls" id="repo-controls">
-        <label for="repo-input">Repository</label>
-        <input id="repo-input" placeholder="owner/repo" />
-        <button id="load-repo">Load timeline</button>
-      </section>
+      <section class="explorer" id="explorer">
+        <h2>Timeline Explorer</h2>
+        <p class="subhead">Load any repo with Dumpy data stored in your configured assets bucket.</p>
+        <section class="controls" id="repo-controls">
+          <label for="repo-input">Repository</label>
+          <input id="repo-input" placeholder="owner/repo" />
+          <button id="load-repo">Load timeline</button>
+        </section>
 
-      <section id="message" class="message"></section>
-      <section id="content"></section>
+        <section id="message" class="message"></section>
+        <section id="content"></section>
+      </section>
     </main>
 
     <script type="module" src="/app.js"></script>

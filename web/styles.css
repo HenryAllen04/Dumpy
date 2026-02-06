@@ -1,10 +1,11 @@
 :root {
-  --bg: #f6f4ef;
-  --card: #fffaf2;
-  --ink: #17130e;
-  --muted: #625746;
-  --accent: #d1462f;
-  --border: #e9dfcf;
+  --bg: #f0e9db;
+  --card: #fffdf8;
+  --ink: #14110d;
+  --muted: #5e5549;
+  --accent: #c3422b;
+  --accent-dark: #7f2a1b;
+  --border: #e6dac7;
 }
 
 * {
@@ -15,48 +16,138 @@ body {
   margin: 0;
   font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
   color: var(--ink);
-  background: radial-gradient(circle at 20% 0%, #f9e9ca 0, var(--bg) 45%, #efe7d9 100%);
+  background:
+    radial-gradient(circle at 80% -10%, #f1bca2 0, transparent 35%),
+    radial-gradient(circle at 0% 0%, #f8de91 0, transparent 30%),
+    var(--bg);
 }
 
 .app {
-  max-width: 1100px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 2rem 1rem 4rem;
 }
 
-.header h1 {
+.hero {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.hero-copy,
+.hero-card,
+.explorer {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(45, 29, 10, 0.07);
+}
+
+.hero-copy {
+  padding: 1.4rem;
+}
+
+.eyebrow {
   margin: 0;
-  font-size: 2.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.hero h1 {
+  margin: 0.4rem 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.05;
   letter-spacing: -0.04em;
 }
 
-.header p {
-  margin-top: 0.4rem;
+.subhead {
   color: var(--muted);
+  margin-top: 0;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.btn {
+  display: inline-block;
+  border-radius: 10px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.62rem 0.95rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background: var(--accent-dark);
+}
+
+.link {
+  align-self: center;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.hero-card {
+  padding: 1.2rem;
+}
+
+.hero-card h2 {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+}
+
+.hero-card ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--muted);
+}
+
+.hero-card li {
+  margin: 0.35rem 0;
+}
+
+.explorer {
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.explorer h2 {
+  margin: 0.2rem 0;
+  letter-spacing: -0.02em;
 }
 
 .controls {
   display: flex;
   gap: 0.6rem;
   align-items: center;
-  margin: 1.4rem 0;
+  margin: 1rem 0;
 }
 
 .controls input {
-  width: 260px;
-  padding: 0.6rem 0.8rem;
+  width: 280px;
+  padding: 0.62rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: white;
+  background: #fff;
 }
 
 button {
   border: 0;
   border-radius: 10px;
   background: var(--accent);
-  color: white;
+  color: #fff;
   padding: 0.65rem 0.95rem;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -73,7 +164,7 @@ button {
 }
 
 .run-list {
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
 }
 
 .shot-grid {
@@ -81,11 +172,11 @@ button {
 }
 
 .card {
-  background: var(--card);
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1rem;
-  box-shadow: 0 10px 30px rgba(28, 18, 9, 0.06);
+  box-shadow: 0 8px 20px rgba(28, 18, 9, 0.05);
 }
 
 .card h3 {
@@ -117,6 +208,12 @@ button {
 
 a {
   color: var(--accent);
+}
+
+@media (max-width: 860px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
