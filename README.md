@@ -71,6 +71,34 @@ npm run dev -- publish \
   --public-base-url "https://assets.dumpy.ai"
 ```
 
+## End-to-end test with Dumpy-Private
+
+Use this when the GitHub App is installed (for example on all repositories) and `app.dumpy.ai` is live.
+
+1. Open `https://app.dumpy.ai` and sign in.
+2. Click `Connect Repository` and confirm your target repository appears in the dashboard.
+3. Open a PR in that repository so your deploy provider emits a successful `deployment_status` event with a preview URL.
+4. In `HenryAllen04/Dumpy-Private`, trigger processing immediately:
+
+```bash
+gh workflow run "Process Capture Jobs" \
+  -R HenryAllen04/Dumpy-Private \
+  -f max_jobs=5
+```
+
+5. Verify in `https://app.dumpy.ai/dashboard`:
+   - New webhook event is logged.
+   - Capture job transitions to `completed`.
+   - `manifest` link is present.
+6. Verify assets in R2 (`https://assets.dumpy.ai`) and timeline pages in `history.dumpy.ai` once published.
+
+Common failure checks:
+
+- `APP_URL` repo variable in `HenryAllen04/Dumpy-Private` equals `https://app.dumpy.ai`.
+- `GITHUB_WEBHOOK_SECRET` is present in Vercel env for Dumpy-Private.
+- `JOB_RUNNER_SECRET` matches between Vercel and GitHub Actions secret.
+- `R2_*` variables are set in Dumpy-Private runtime.
+
 ## Required GitHub secrets
 
 - `R2_ACCOUNT_ID`
