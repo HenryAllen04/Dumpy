@@ -14,7 +14,7 @@ Dumpy captures deployment screenshots and builds a long-term UI timeline for you
 - Stores immutable run artifacts in Cloudflare R2.
 - Maintains a per-repo `index.json` timeline.
 - Posts a PR comment linking to the latest run.
-- Serves a public timeline UI (in `history-web/`) intended for `history.dumpy.ai`.
+- Serves a public install/CTA site at `history.dumpy.ai` and an account-gated timeline dashboard route.
 
 ## MVP architecture
 
@@ -22,7 +22,7 @@ Dumpy captures deployment screenshots and builds a long-term UI timeline for you
 2. GitHub Action runs `dumpy capture` against `deployment_status.target_url`.
 3. `dumpy publish` uploads screenshots + manifest to R2 and updates repo index.
 4. `dumpy comment-pr` posts/updates a PR comment with run and timeline links.
-5. Cloudflare Pages serves `history-web/out` (static export), which reads manifests/indexes from R2 public URLs.
+5. Cloudflare Pages serves `history-web/out` (static export): public CTA on `/`, dashboard on `/dashboard`.
 
 ## Repository structure
 
@@ -143,6 +143,10 @@ npm run build --prefix history-web
 ## Deploying the timeline UI
 
 Deploy `/Users/henrym5/Dumpy/history-web/out` to Cloudflare Pages and set `history.dumpy.ai`.
+
+- `/` is the public install/CTA landing page.
+- `/dashboard` is account-gated in the UI and links sign-in to `https://app.dumpy.ai/dashboard` by default.
+- Optional override: `NEXT_PUBLIC_DUMPY_ACCOUNT_DASHBOARD_URL`.
 
 The UI defaults to `https://assets.dumpy.ai`. You can override with query parameter:
 

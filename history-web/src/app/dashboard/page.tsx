@@ -1,5 +1,7 @@
-import { TimelineExplorer } from "@/components/timeline-explorer";
+"use client";
+
+import { DashboardGate } from "@/components/dashboard-gate";
 
 export default function DashboardPage() {
-  return <TimelineExplorer />;
+  return <DashboardGate />;
 }

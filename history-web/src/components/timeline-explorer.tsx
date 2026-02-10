@@ -9,11 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 
 const DEFAULT_ASSETS_BASE = "https://assets.dumpy.ai";
-const DEFAULT_REPO = "HenryAllen04/Dumpy";
 
-type ParsedPath = {
-  repo?: string;
+type UrlState = {
+  repo: string;
   runSha?: string;
+  assetsBase: string;
 };
 
 type RunSummary = {
@@ -49,23 +49,45 @@ type ViewState =
   | { kind: "index"; repo: string; assetsBase: string; runs: RunSummary[] }
   | { kind: "run"; repo: string; assetsBase: string; manifest: RunManifest };
 
-function parsePathname(pathname: string): ParsedPath {
+type LocationState = {
+  pathname: string;
+  search: string;
+};
+
+function readUrlState(pathname: string, search: string): UrlState {
+  const query = new URLSearchParams(search);
+  const queryRepo = query.get("repo")?.trim() ?? "";
+  const queryRun = query.get("run")?.trim() ?? "";
+  const queryAssets = query.get("assets")?.trim() ?? "";
+
+  if (queryRepo) {
+    return {
+      repo: queryRepo,
+      runSha: queryRun || undefined,
+      assetsBase: queryAssets || DEFAULT_ASSETS_BASE,
+    };
+  }
+
+  // Backward compatibility for old path-style links.
   const pieces = pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
-
-  if (pieces.length >= 4 && pieces[2] === "run") {
-    return { repo: `${pieces[0]}/${pieces[1]}`, runSha: pieces[3] };
+  if (pieces.length >= 2 && pieces[0] !== "dashboard") {
+    const repo = `${pieces[0]}/${pieces[1]}`;
+    const runSha = pieces.length >= 4 && pieces[2] === "run" ? pieces[3] : undefined;
+    return {
+      repo,
+      runSha,
+      assetsBase: queryAssets || DEFAULT_ASSETS_BASE,
+    };
   }
 
-  if (pieces.length >= 2) {
-    return { repo: `${pieces[0]}/${pieces[1]}` };
-  }
-
-  return {};
+  return {
+    repo: "",
+    assetsBase: queryAssets || DEFAULT_ASSETS_BASE,
+  };
 }
 
-function readAssetsBase(search: string): string {
-  const query = new URLSearchParams(search);
-  return query.get("assets") || DEFAULT_ASSETS_BASE;
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString();
 }
 
 function repoKey(repo: string): string {
@@ -73,223 +95,234 @@ function repoKey(repo: string): string {
   return `repos/${owner}/${name}`;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
+function replaceUrlState(nextState: UrlState) {
+  const url = new URL(window.location.href);
 
-function buildHref(pathname: string, assetsBase: string): string {
-  if (assetsBase === DEFAULT_ASSETS_BASE) {
-    return pathname;
+  if (nextState.repo) {
+    url.searchParams.set("repo", nextState.repo);
+  } else {
+    url.searchParams.delete("repo");
   }
-  return `${pathname}?assets=${encodeURIComponent(assetsBase)}`;
+
+  if (nextState.runSha) {
+    url.searchParams.set("run", nextState.runSha);
+  } else {
+    url.searchParams.delete("run");
+  }
+
+  if (nextState.assetsBase && nextState.assetsBase !== DEFAULT_ASSETS_BASE) {
+    url.searchParams.set("assets", nextState.assetsBase);
+  } else {
+    url.searchParams.delete("assets");
+  }
+
+  window.history.replaceState({}, "", `${url.pathname}${url.search}`);
 }
 
 async function loadIndex(repo: string, assetsBase: string): Promise<RepoIndex> {
   const url = `${assetsBase}/${repoKey(repo)}/index.json`;
   const response = await fetch(url);
-
   if (!response.ok) {
-    throw new Error(`Could not load repo index (${response.status})`);
+    throw new Error(`repo-index:${response.status}`);
   }
-
   return response.json();
 }
 
 async function loadManifest(repo: string, sha: string, assetsBase: string): Promise<RunManifest> {
   const url = `${assetsBase}/${repoKey(repo)}/runs/${sha}/manifest.json`;
   const response = await fetch(url);
-
   if (!response.ok) {
-    throw new Error(`Could not load run manifest (${response.status})`);
+    throw new Error(`run-manifest:${response.status}`);
   }
-
   return response.json();
 }
 
+function friendlyErrorMessage(error: unknown, repo: string): string {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+
+  if (error.message === "repo-index:404") {
+    return `No timeline found for ${repo} yet. Install Dumpy in your repo and run your first capture, then try again.`;
+  }
+
+  if (error.message.startsWith("repo-index:")) {
+    return `Could not load timeline index (${error.message.replace("repo-index:", "")}).`;
+  }
+
+  if (error.message.startsWith("run-manifest:")) {
+    return `Could not load run manifest (${error.message.replace("run-manifest:", "")}).`;
+  }
+
+  return error.message;
+}
+
 export function TimelineExplorer() {
-  const [repoInput, setRepoInput] = useState(DEFAULT_REPO);
-  const [message, setMessage] = useState("Loading timeline context...");
+  const [locationState, setLocationState] = useState<LocationState>({ pathname: "/", search: "" });
+  const [repoInput, setRepoInput] = useState("");
+  const [assetsInput, setAssetsInput] = useState(DEFAULT_ASSETS_BASE);
+  const [message, setMessage] = useState("Loading...");
   const [isLoading, setIsLoading] = useState(true);
   const [viewState, setViewState] = useState<ViewState>({
     kind: "welcome",
     assetsBase: DEFAULT_ASSETS_BASE,
   });
-  const [locationState, setLocationState] = useState(() => ({
-    pathname: "/",
-    search: "",
-  }));
 
   useEffect(() => {
-    const syncLocation = () => {
+    const sync = () => {
       setLocationState({
         pathname: window.location.pathname,
         search: window.location.search,
       });
     };
 
-    syncLocation();
-    window.addEventListener("popstate", syncLocation);
-    return () => window.removeEventListener("popstate", syncLocation);
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const assetsBase = readAssetsBase(locationState.search);
-    const parsed = parsePathname(locationState.pathname);
+    let alive = true;
+    const urlState = readUrlState(locationState.pathname, locationState.search);
 
-    setRepoInput(parsed.repo || DEFAULT_REPO);
+    setRepoInput(urlState.repo);
+    setAssetsInput(urlState.assetsBase);
     setIsLoading(true);
 
-    async function load() {
+    async function boot() {
       try {
-        if (!parsed.repo) {
-          setViewState({ kind: "welcome", assetsBase });
-          setMessage("Ready. Add a repo and load timeline data.");
+        if (!urlState.repo) {
+          if (!alive) {
+            return;
+          }
+          setViewState({ kind: "welcome", assetsBase: urlState.assetsBase });
+          setMessage("Install Dumpy in your repo, then load your timeline.");
           return;
         }
 
-        if (parsed.runSha) {
-          setMessage(`Loading run ${parsed.runSha.slice(0, 12)} for ${parsed.repo}...`);
-          const manifest = await loadManifest(parsed.repo, parsed.runSha, assetsBase);
-
-          if (!active) {
+        if (urlState.runSha) {
+          setMessage(`Loading run ${urlState.runSha.slice(0, 12)} for ${urlState.repo}...`);
+          const manifest = await loadManifest(urlState.repo, urlState.runSha, urlState.assetsBase);
+          if (!alive) {
             return;
           }
-
-          setViewState({ kind: "run", repo: parsed.repo, assetsBase, manifest });
+          setViewState({
+            kind: "run",
+            repo: urlState.repo,
+            assetsBase: urlState.assetsBase,
+            manifest,
+          });
           setMessage(`Loaded ${manifest.stats?.routesCaptured ?? 0} screenshots.`);
           return;
         }
 
-        setMessage(`Loading timeline for ${parsed.repo}...`);
-        const index = await loadIndex(parsed.repo, assetsBase);
-
-        if (!active) {
+        setMessage(`Loading timeline for ${urlState.repo}...`);
+        const index = await loadIndex(urlState.repo, urlState.assetsBase);
+        if (!alive) {
           return;
         }
-
-        setViewState({ kind: "index", repo: parsed.repo, assetsBase, runs: index.runs || [] });
+        setViewState({
+          kind: "index",
+          repo: urlState.repo,
+          assetsBase: urlState.assetsBase,
+          runs: index.runs || [],
+        });
         setMessage(`Loaded ${index.runs?.length ?? 0} runs.`);
       } catch (error) {
-        if (!active) {
+        if (!alive) {
           return;
         }
-        setViewState({ kind: "welcome", assetsBase });
-        setMessage(error instanceof Error ? error.message : String(error));
+        setViewState({ kind: "welcome", assetsBase: urlState.assetsBase });
+        setMessage(friendlyErrorMessage(error, urlState.repo));
       } finally {
-        if (active) {
+        if (alive) {
           setIsLoading(false);
         }
       }
     }
 
-    void load();
+    void boot();
 
     return () => {
-      active = false;
+      alive = false;
     };
   }, [locationState.pathname, locationState.search]);
 
-  const assetsBase = useMemo(() => readAssetsBase(locationState.search), [locationState.search]);
+  const currentUrlState = useMemo(
+    () => readUrlState(locationState.pathname, locationState.search),
+    [locationState.pathname, locationState.search]
+  );
 
-  function navigateTo(pathname: string) {
-    const href = buildHref(pathname, assetsBase);
-    window.history.pushState({}, "", href);
-    setLocationState({ pathname: window.location.pathname, search: window.location.search });
+  function setUrlState(nextState: UrlState) {
+    replaceUrlState(nextState);
+    setLocationState({
+      pathname: window.location.pathname,
+      search: window.location.search,
+    });
   }
 
   function handleLoadRepo() {
     const repo = repoInput.trim();
+    const assetsBase = assetsInput.trim() || DEFAULT_ASSETS_BASE;
+
     if (!repo) {
       setMessage("Enter owner/repo first.");
       return;
     }
 
-    navigateTo(`/${repo}`);
+    setUrlState({
+      repo,
+      assetsBase,
+    });
   }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 pb-16 md:px-6">
-      <header className="grid gap-4 md:grid-cols-[1.35fr_1fr]">
-        <Card className="border-border/80 shadow-lg shadow-primary/5">
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
-              UI history for fast-moving teams
-            </p>
-            <CardTitle className="text-balance text-3xl leading-tight tracking-tight md:text-5xl">
-              Dumpy tracks how your UI evolves on every deploy.
-            </CardTitle>
-            <CardDescription className="text-sm leading-relaxed md:text-base">
-              Connect a repo, capture preview deployments, and browse screenshot history by PR, route,
-              device, and commit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            <Button asChild size="lg">
-              <a
-                href="https://github.com/HenryAllen04/Dumpy"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                Open Source Repo
-              </a>
-            </Button>
-            <Button asChild variant="secondary" size="lg">
-              <a
-                href="https://github.com/HenryAllen04/Dumpy-Private"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                Private Product Repo
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/80 shadow-lg shadow-primary/5">
-          <CardHeader>
-            <CardTitle>MVP status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="text-muted-foreground grid gap-2 text-sm">
-              <li>GitHub Action capture pipeline</li>
-              <li>Playwright screenshot capture</li>
-              <li>Cloudflare R2 manifest storage</li>
-              <li>Cloudflare Pages timeline UI</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </header>
-
-      <section id="explorer" className="mt-4">
+      <section id="explorer">
         <Card className="border-border/80 shadow-lg shadow-primary/5">
           <CardHeader>
             <CardTitle>Timeline Explorer</CardTitle>
             <CardDescription>
-              Load any repo with Dumpy data stored in your configured assets bucket.
+              Load timelines from your assets domain. This dashboard is intended for authenticated users.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form
-              className="flex flex-col items-start gap-3 md:flex-row md:items-center"
+              className="grid gap-3 md:grid-cols-[1fr_1.2fr_auto]"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleLoadRepo();
               }}
             >
-              <label htmlFor="repo-input" className="text-sm font-medium">
-                Repository
-              </label>
-              <Input
-                id="repo-input"
-                placeholder="owner/repo"
-                value={repoInput}
-                onChange={(event) => setRepoInput(event.target.value)}
-                className="h-11 w-full max-w-sm"
-              />
-              <Button type="submit" size="lg">
-                Load timeline
-              </Button>
+              <div className="space-y-2">
+                <label htmlFor="repo-input" className="text-sm font-medium">
+                  Repository
+                </label>
+                <Input
+                  id="repo-input"
+                  placeholder="owner/repo"
+                  value={repoInput}
+                  onChange={(event) => setRepoInput(event.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="assets-input" className="text-sm font-medium">
+                  Assets base URL
+                </label>
+                <Input
+                  id="assets-input"
+                  placeholder="https://assets.example.com"
+                  value={assetsInput}
+                  onChange={(event) => setAssetsInput(event.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button type="submit" size="lg" className="h-11 w-full md:w-auto">
+                  Load timeline
+                </Button>
+              </div>
             </form>
 
             <div className="text-muted-foreground min-h-6 text-sm">
@@ -307,40 +340,32 @@ export function TimelineExplorer() {
               <section className="grid gap-4 lg:grid-cols-3">
                 <Card className="gap-3 py-4">
                   <CardHeader>
-                    <CardTitle className="text-lg">Start with your repo</CardTitle>
+                    <CardTitle className="text-lg">1. Install and configure</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-sm">
-                      Enter your <code>owner/repo</code> above and load timeline history.
+                      Add Dumpy to your repo and set your tracked routes in <code>.dumpy.yml</code>.
                     </p>
                   </CardContent>
                 </Card>
                 <Card className="gap-3 py-4">
                   <CardHeader>
-                    <CardTitle className="text-lg">Assets bucket</CardTitle>
+                    <CardTitle className="text-lg">2. Publish assets</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground text-sm">
-                      Current source: <code>{viewState.assetsBase}</code>
+                      Dumpy uploads screenshots and manifests to your configured storage domain.
                     </p>
                   </CardContent>
                 </Card>
                 <Card className="gap-3 py-4">
                   <CardHeader>
-                    <CardTitle className="text-lg">Example path</CardTitle>
+                    <CardTitle className="text-lg">3. Explore timeline</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent>
                     <p className="text-muted-foreground text-sm">
-                      If seeded, open <code>{DEFAULT_REPO}</code> directly.
+                      Enter <code>owner/repo</code> and your assets URL above to load all captured runs.
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigateTo(`/${DEFAULT_REPO}`)}
-                      className="w-full sm:w-auto"
-                    >
-                      Open example route
-                    </Button>
                   </CardContent>
                 </Card>
               </section>
@@ -354,32 +379,34 @@ export function TimelineExplorer() {
                   </p>
                 ) : (
                   <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {viewState.runs.map((run) => {
-                      const runPath = `/${viewState.repo}/run/${run.sha}`;
-                      return (
-                        <Card key={run.sha} className="gap-4 py-4">
-                          <CardHeader className="space-y-2">
-                            <CardTitle className="text-lg">{run.sha.slice(0, 12)}</CardTitle>
-                            <CardDescription>{formatDate(run.capturedAt)}</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="flex flex-wrap gap-2">
-                              <Badge variant="secondary">{run.eventType}</Badge>
-                              {run.prNumber ? <Badge variant="outline">PR #{run.prNumber}</Badge> : null}
-                            </div>
-                            <p className="text-muted-foreground text-sm">
-                              Captured images: {run.routeCount}
-                            </p>
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={buildHref(runPath, viewState.assetsBase)}>
-                                Open run
-                                <ExternalLink className="size-3.5" aria-hidden="true" />
-                              </a>
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                    {viewState.runs.map((run) => (
+                      <Card key={run.sha} className="gap-4 py-4">
+                        <CardHeader className="space-y-2">
+                          <CardTitle className="text-lg">{run.sha.slice(0, 12)}</CardTitle>
+                          <CardDescription>{formatDate(run.capturedAt)}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">{run.eventType}</Badge>
+                            {run.prNumber ? <Badge variant="outline">PR #{run.prNumber}</Badge> : null}
+                          </div>
+                          <p className="text-muted-foreground text-sm">Captured images: {run.routeCount}</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setUrlState({
+                                repo: viewState.repo,
+                                runSha: run.sha,
+                                assetsBase: viewState.assetsBase,
+                              })
+                            }
+                          >
+                            Open run
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </section>
                 )}
               </>
@@ -390,7 +417,12 @@ export function TimelineExplorer() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigateTo(`/${viewState.repo}`)}
+                  onClick={() =>
+                    setUrlState({
+                      repo: viewState.repo,
+                      assetsBase: viewState.assetsBase,
+                    })
+                  }
                   className="w-full sm:w-auto"
                 >
                   Back to timeline
@@ -441,6 +473,20 @@ export function TimelineExplorer() {
                 </section>
               </section>
             )}
+
+            {currentUrlState.repo ? (
+              <p className="text-muted-foreground text-xs">
+                Current URL state: <code>repo={currentUrlState.repo}</code>
+                {currentUrlState.runSha ? (
+                  <>
+                    {" "}
+                    • <code>run={currentUrlState.runSha.slice(0, 12)}</code>
+                  </>
+                ) : null}
+                {" • "}
+                <code>assets={currentUrlState.assetsBase}</code>
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       </section>
