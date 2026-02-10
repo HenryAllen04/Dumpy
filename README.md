@@ -14,7 +14,7 @@ Dumpy captures deployment screenshots and builds a long-term UI timeline for you
 - Stores immutable run artifacts in Cloudflare R2.
 - Maintains a per-repo `index.json` timeline.
 - Posts a PR comment linking to the latest run.
-- Serves a public timeline UI (in `web/`) intended for `history.dumpy.ai`.
+- Serves a public timeline UI (in `history-web/`) intended for `history.dumpy.ai`.
 
 ## MVP architecture
 
@@ -22,7 +22,7 @@ Dumpy captures deployment screenshots and builds a long-term UI timeline for you
 2. GitHub Action runs `dumpy capture` against `deployment_status.target_url`.
 3. `dumpy publish` uploads screenshots + manifest to R2 and updates repo index.
 4. `dumpy comment-pr` posts/updates a PR comment with run and timeline links.
-5. Cloudflare Pages serves `web/`, which reads manifests/indexes from R2 public URLs.
+5. Cloudflare Pages serves `history-web/out` (static export), which reads manifests/indexes from R2 public URLs.
 
 ## Repository structure
 
@@ -32,8 +32,8 @@ Dumpy captures deployment screenshots and builds a long-term UI timeline for you
 - `/Users/henrym5/Dumpy/src/publish.ts`: R2 upload + index merge.
 - `/Users/henrym5/Dumpy/src/comment-pr.ts`: PR comment upsert.
 - `/Users/henrym5/Dumpy/.github/workflows/dumpy-capture.yml`: CI workflow.
-- `/Users/henrym5/Dumpy/.github/workflows/deploy-landing.yml`: landing page deploy workflow.
-- `/Users/henrym5/Dumpy/web/`: timeline frontend.
+- `/Users/henrym5/Dumpy/history-web/`: Next.js + shadcn timeline frontend.
+- `/Users/henrym5/Dumpy/.github/workflows/deploy-landing.yml`: builds `history-web/` and deploys static export.
 
 ## Quick start
 
@@ -136,11 +136,13 @@ Main knobs:
 ```bash
 npm run test
 npm run build
+npm run lint --prefix history-web
+npm run build --prefix history-web
 ```
 
 ## Deploying the timeline UI
 
-Deploy `/Users/henrym5/Dumpy/web` to Cloudflare Pages and set `history.dumpy.ai`.
+Deploy `/Users/henrym5/Dumpy/history-web/out` to Cloudflare Pages and set `history.dumpy.ai`.
 
 The UI defaults to `https://assets.dumpy.ai`. You can override with query parameter:
 

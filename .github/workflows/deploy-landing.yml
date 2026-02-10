@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - web/**
+      - history-web/**
       - .github/workflows/deploy-landing.yml
   workflow_dispatch:
 
@@ -20,6 +20,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: history-web/package-lock.json
+
+      - name: Build history web app (static export)
+        run: |
+          npm ci --prefix history-web
+          npm run build --prefix history-web
+
       - name: Deploy static site to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -27,6 +39,6 @@ jobs:
           PAGES_PROJECT: ${{ vars.CF_PAGES_PROJECT || 'dumpy' }}
           PAGES_BRANCH: ${{ vars.CF_PAGES_BRANCH || 'main' }}
         run: |
-          npx wrangler@4 pages deploy web \
+          npx wrangler@4 pages deploy history-web/out \
             --project-name "$PAGES_PROJECT" \
             --branch "$PAGES_BRANCH"
