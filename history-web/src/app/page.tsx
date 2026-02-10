@@ -2,9 +2,9 @@ import { CheckCircle2, ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAccountDashboardUrl } from "@/lib/account-dashboard-url";
 
-const ACCOUNT_DASHBOARD_URL =
-  process.env.NEXT_PUBLIC_DUMPY_ACCOUNT_DASHBOARD_URL ?? "https://app.dumpy.ai/dashboard";
+const ACCOUNT_DASHBOARD_URL = getAccountDashboardUrl();
 
 export default function Home() {
   return (

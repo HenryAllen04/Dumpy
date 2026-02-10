@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { Lock, ShieldCheck } from "lucide-react";
 
-import { TimelineExplorer } from "@/components/timeline-explorer";
+import { TimelineDemo } from "@/components/timeline-demo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAccountDashboardUrl } from "@/lib/account-dashboard-url";
 
-const ACCOUNT_DASHBOARD_URL =
-  process.env.NEXT_PUBLIC_DUMPY_ACCOUNT_DASHBOARD_URL ?? "https://app.dumpy.ai/dashboard";
+const ACCOUNT_DASHBOARD_URL = getAccountDashboardUrl();
 
 function hasAccountSessionCookie(): boolean {
   if (typeof document === "undefined") {
@@ -68,5 +68,5 @@ export function DashboardGate() {
     );
   }
 
-  return <TimelineExplorer />;
+  return <TimelineDemo />;
 }

@@ -145,8 +145,9 @@ npm run build --prefix history-web
 Deploy `/Users/henrym5/Dumpy/history-web/out` to Cloudflare Pages and set `history.dumpy.ai`.
 
 - `/` is the public install/CTA landing page.
-- `/dashboard` is account-gated in the UI and links sign-in to `https://app.dumpy.ai/dashboard` by default.
-- Optional override: `NEXT_PUBLIC_DUMPY_ACCOUNT_DASHBOARD_URL`.
+- `/dashboard` is account-gated in the UI.
+- Sign-in target defaults to `http://localhost:edge/dashboard` in local dev and `https://app.dumpy.ai/dashboard` in production.
+- Optional overrides: `NEXT_PUBLIC_DUMPY_LOCAL_ACCOUNT_DASHBOARD_URL`, `NEXT_PUBLIC_DUMPY_ACCOUNT_DASHBOARD_URL`.
 
 The UI defaults to `https://assets.dumpy.ai`. You can override with query parameter:
 
